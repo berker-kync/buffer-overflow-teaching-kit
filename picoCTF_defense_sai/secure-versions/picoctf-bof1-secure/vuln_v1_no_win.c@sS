@@ -1,0 +1,25 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// DEFENSE VERSION 1: remove win()
+// This program is still vulnerable to overflow,
+// but there is NO win() function to jump to.
+// So a ret2win-style attack cannot succeed.
+
+void vuln() {
+    char buf[32];
+
+    printf("Enter some text: ");
+
+    // still dangerous, but for Version 1 that's okay:
+    // we are only removing the target (win)
+    gets(buf);
+
+    printf("You entered: %s\n", buf);
+}
+
+int main(int argc, char **argv) {
+    vuln();
+    return 0;
+}
