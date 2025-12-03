@@ -1,0 +1,13 @@
+# Compiled binaries
+vuln_v1_no_win
+vuln_v2_safe_input
+vuln_v3
+vuln_v4
+vuln_v5
+
+# Zip files
+*.zip
+
+# Backup files
+*.c@*
+*~
