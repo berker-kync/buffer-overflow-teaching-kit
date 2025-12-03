@@ -1,0 +1,11 @@
+# Compiled binaries
+stack_v1_safe_code
+stack_v2_canary_nx
+stack_v3_all_defenses
+
+# Exploit files
+badfile
+
+# Editor backups
+*~
+*.swp

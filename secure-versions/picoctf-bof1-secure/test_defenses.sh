@@ -1,36 +1,26 @@
 #!/bin/bash
 
-echo "Testing picoCTF ret2win defenses"
-echo "================================"
+echo "Testing picoCTF Defenses (3 versions)"
+echo "====================================="
 echo
 
-# This is the same payload you already used:
-# 44 'A's + address of win() (0x08049186)
 PAYLOAD_CMD='python3 -c "import sys, struct; sys.stdout.buffer.write(b\"A\"*44 + struct.pack(\"<I\", 0x08049186))"'
 
-echo "[1] Original vulnerable binary (SHOULD call win)"
-eval $PAYLOAD_CMD | ../../vulnerable-programs/picoctf-bof1/vuln
+echo "[1] Original vulnerable:"
+eval $PAYLOAD_CMD | ../../vulnerable-programs/picoctf-bof1/vuln 2>&1
 echo
 
-echo "[2] Version 1 - no win() function (attack should FAIL / maybe crash)"
-eval $PAYLOAD_CMD | ./vuln_v1_no_win
+echo "[2] Version 1 - Safe Code:"
+eval $PAYLOAD_CMD | ./vuln_v1_safe_code 2>&1
 echo
 
-echo "[3] Version 2 - safe input (fgets) (overflow should NOT happen)"
-eval $PAYLOAD_CMD | ./vuln_v2_safe_input
+echo "[3] Version 2 - Stack Canary:"
+eval $PAYLOAD_CMD | ./vuln_v2_canary 2>&1
 echo
 
-echo "[4] Version 3 - stack canary (should detect stack smashing)"
-eval $PAYLOAD_CMD | ./vuln_v3 2>&1
+echo "[4] Version 3 - All Defenses:"
+eval $PAYLOAD_CMD | ./vuln_v3_all_defenses 2>&1
 echo
 
-echo "[5] Version 4 - ASLR/PIE + canary (ret2win should not be reliable)"
-eval $PAYLOAD_CMD | ./vuln_v4 2>&1
-echo
-
-echo "[6] Version 5 - all defenses (should be fully protected)"
-eval $PAYLOAD_CMD | ./vuln_v5 2>&1
-echo
-
-echo "================================"
-echo "All tests complete!"
+echo "====================================="
+echo "Test complete"
