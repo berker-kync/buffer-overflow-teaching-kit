@@ -1,0 +1,8 @@
+# Compiled binaries
+stack0_v1_safe_code
+stack0_v2_canary
+stack0_v3_all_defenses
+
+# Editor backups
+*~
+*.swp
