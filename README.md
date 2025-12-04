@@ -47,7 +47,7 @@ buffer-overflow-teaching-kit/
 ├── exploits/               # Working exploits for each vulnerability
 │   ├── protostar-stack0/
 │   ├── picoctf-bof1/
-│   └── seedlabs_exploit.py
+│   └── lab3-seedlabs/
 │
 ├── tutorial/               # Step-by-step tutorial sections
 │   ├── PROTOSTAR_TUTORIAL_SECTION.md
@@ -106,7 +106,7 @@ Learn to inject and execute custom shellcode to spawn a root shell.
 
 **Files:**
 - Vulnerable program: `vulnerable-programs/lab3-seedlabs/`
-- Exploit: `exploits/seedlabs_exploit.py`
+- Exploit: `exploits/lab3-seedlabs/exploit.py`
 - Tutorial: `tutorial/LAB3_SEEDLABS_TUTORIAL.md`
 - Defenses: `secure-versions/lab3-seedlabs-secure/`
 

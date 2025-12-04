@@ -27,4 +27,4 @@ These tools were created to solve the GDB vs runtime address problem and verify 
 - `seedlabs_final.py` - Pre-EDX fix attempt
 - `seedlabs_exploit_robust.py` - Earlier iteration
 
-These show the evolution toward the working exploit in `../../exploits/seedlabs_exploit.py`
+These show the evolution toward the working exploit in `../../exploits/lab3-seedlabs/exploit.py`

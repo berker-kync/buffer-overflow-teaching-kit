@@ -9,7 +9,7 @@ VULN_DIR="../../vulnerable-programs/seedlabs-stack"
 
 echo "Generating exploit payload..."
 cd $EXPLOIT_DIR
-python3 seedlabs_exploit.py
+python3 ../../exploits/lab3-seedlabs/exploit.py
 cd - > /dev/null
 
 # Copy badfile from vulnerable-programs directory
