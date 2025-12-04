@@ -179,14 +179,14 @@ Attack: SUCCESS (vulnerable!)
 
 ### Against Version 1 (Safe Code):
 ```
-python3 -c 'import sys; sys.stdout.buffer.write(b"A"*64 + b"BCDE")' | ./stack0_v1_safe_code
+python3 -c 'import sys; sys.stdout.buffer.write(b"A"*64 + b"BCDE")' | ./lab1_v1_safe_code
 Result: Input too long! Maximum 63 characters
 Attack: FAILED (rejected)
 ```
 
 ### Against Version 2 (Stack Canary):
 ```
-python3 -c 'import sys; sys.stdout.buffer.write(b"A"*64 + b"BCDE")' | ./stack0_v2_canary
+python3 -c 'import sys; sys.stdout.buffer.write(b"A"*64 + b"BCDE")' | ./lab1_v2_canary
 Result: *** stack smashing detected ***: terminated
         Aborted (core dumped)
 Attack: FAILED (detected and aborted)
@@ -194,7 +194,7 @@ Attack: FAILED (detected and aborted)
 
 ### Against Version 3 (All Defenses):
 ```
-python3 -c 'import sys; sys.stdout.buffer.write(b"A"*64 + b"BCDE")' | ./stack0_v3_all_defenses
+python3 -c 'import sys; sys.stdout.buffer.write(b"A"*64 + b"BCDE")' | ./lab1_v3_all_defenses
 Result: Input too long! Maximum 63 characters
 Attack: FAILED (rejected at first layer)
 ```

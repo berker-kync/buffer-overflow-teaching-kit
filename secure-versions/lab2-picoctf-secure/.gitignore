@@ -1,0 +1,8 @@
+# Compiled binaries
+lab2_v1_safe_code
+lab2_v2_canary
+lab2_v3_all_defenses
+
+# Editor backups
+*~
+*.swp

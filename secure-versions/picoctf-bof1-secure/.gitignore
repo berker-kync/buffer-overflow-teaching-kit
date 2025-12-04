@@ -1,8 +1,0 @@
-# Compiled binaries
-vuln_v1_safe_code
-vuln_v2_canary
-vuln_v3_all_defenses
-
-# Editor backups
-*~
-*.swp

@@ -73,10 +73,10 @@ buffer-overflow-teaching-kit/
 Learn the fundamentals of buffer overflows by overwriting a variable adjacent to a buffer.
 
 **Files:**
-- Vulnerable program: `vulnerable-programs/protostar-stack0/`
-- Exploit: `exploits/protostar-stack0/exploit.py`
-- Tutorial: `tutorial/PROTOSTAR_TUTORIAL_SECTION.md`
-- Defenses: `secure-versions/protostar-stack0-secure/`
+- Vulnerable program: `vulnerable-programs/lab1-protostar/`
+- Exploit: `exploits/lab1-protostar/exploit.py`
+- Tutorial: `tutorial/LAB1_PROTOSTAR_TUTORIAL.md`
+- Defenses: `secure-versions/lab1-protostar-secure/`
 
 ---
 
@@ -89,10 +89,10 @@ Learn the fundamentals of buffer overflows by overwriting a variable adjacent to
 Learn to redirect program execution by overwriting the return address to jump to an existing function.
 
 **Files:**
-- Vulnerable program: `vulnerable-programs/picoctf-bof1/`
-- Exploit: `exploits/picoctf-bof1/exploit.py`
-- Tutorial: `tutorial/PICOCTF_TUTORIAL_SECTION.md`
-- Defenses: `secure-versions/picoctf-bof1-secure/`
+- Vulnerable program: `vulnerable-programs/lab2-picoctf/`
+- Exploit: `exploits/lab2-picoctf/exploit.py`
+- Tutorial: `tutorial/LAB2_PICOCTF_TUTORIAL.md`
+- Defenses: `secure-versions/lab2-picoctf-secure/`
 
 ---
 
@@ -105,10 +105,10 @@ Learn to redirect program execution by overwriting the return address to jump to
 Learn to inject and execute custom shellcode to spawn a root shell.
 
 **Files:**
-- Vulnerable program: `vulnerable-programs/seedlabs-stack/`
+- Vulnerable program: `vulnerable-programs/lab3-seedlabs/`
 - Exploit: `exploits/seedlabs_exploit.py`
-- Tutorial: `tutorial/SEEDLABS_TUTORIAL_SECTION.md`
-- Defenses: `secure-versions/seedlabs-stack-secure/`
+- Tutorial: `tutorial/LAB3_SEEDLABS_TUTORIAL.md`
+- Defenses: `secure-versions/lab3-seedlabs-secure/`
 
 ---
 
@@ -143,18 +143,18 @@ python3 --version
 cd buffer-overflow-teaching-kit
 
 # 2. Compile the vulnerable program
-cd vulnerable-programs/protostar-stack0
+cd vulnerable-programs/lab1-protostar
 gcc -m32 -fno-stack-protector -no-pie -o stack0 stack0.c
 
 # 3. Read the tutorial
-cat ../../tutorial/PROTOSTAR_TUTORIAL_SECTION.md
+cat ../../tutorial/LAB1_PROTOSTAR_TUTORIAL.md
 
 # 4. Run the exploit
-cd ../../exploits/protostar-stack0
-python3 exploit.py | ../../vulnerable-programs/protostar-stack0/stack0
+cd ../../exploits/lab1-protostar
+python3 exploit.py | ../../vulnerable-programs/lab1-protostar/stack0
 
 # 5. Check the defenses
-cd ../../secure-versions/protostar-stack0-secure
+cd ../../secure-versions/lab1-protostar-secure
 ./COMPILE_ALL.sh
 ./test_defenses.sh
 ```
@@ -183,7 +183,7 @@ Each lab includes three secure versions demonstrating different defense techniqu
 **Example: Testing SEED Labs Defenses**
 
 ```bash
-cd secure-versions/seedlabs-stack-secure
+cd secure-versions/lab3-seedlabs-secure
 ./COMPILE_ALL.sh          # Compile all versions
 ./test_defenses.sh        # Test against exploit
 ```

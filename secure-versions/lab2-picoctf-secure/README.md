@@ -1,43 +1,46 @@
-# Protostar Stack0 - Secure Versions
+# picoCTF Buffer Overflow - Secure Versions
 
 ## Overview
 
-This directory contains three secure versions of the Protostar Stack0 program, demonstrating different defense techniques against buffer overflow attacks.
+This directory contains three secure versions of the picoCTF buffer overflow program, demonstrating different defense techniques against ret2win attacks.
 
 ## Original Vulnerability
 
-Location: `../../vulnerable-programs/protostar-stack0/stack0.c`
+Location: `../../vulnerable-programs/lab2-picoctf/vuln.c`
 
 The vulnerable program:
 - Uses `gets()` with no bounds checking
-- Reads unlimited input into a 64-byte buffer
-- Allows overflow to overwrite adjacent `modified` variable
-- If `modified` changes from 0, attack succeeds
+- Reads unlimited input into a 32-byte buffer
+- Contains a `win()` function that prints the flag
+- Allows overflow to overwrite the return address
+- Attacker can redirect execution to `win()`
 
 ## Defense Versions
 
 ### Version 1: Safe Code Practices
 
-**File:** `stack0_v1_safe_code.c`
+**File:** `lab2_v1_safe_code.c`
 
 **Defense:** Input validation + safe functions
 
 **How it works:**
 - Uses `fgets()` instead of `gets()`
-- Validates input length before copying
+- Validates input length before processing
 - Uses `strncpy()` for safe copying
-- Rejects inputs that are too large
+- Rejects inputs that exceed buffer size
 
 **Result:** Input rejected - overflow prevented at code level
 
 **Compilation:**
 ```bash
-gcc -m32 -fno-stack-protector -no-pie -o stack0_v1_safe_code stack0_v1_safe_code.c
+gcc -m32 -fno-stack-protector -no-pie -o lab2_v1_safe_code lab2_v1_safe_code.c
 ```
+
+---
 
 ### Version 2: Stack Canary Protection
 
-**File:** `stack0_v2_canary.c`
+**File:** `lab2_v2_canary.c`
 
 **Defense:** Compiler-inserted detection mechanism
 
@@ -51,14 +54,16 @@ gcc -m32 -fno-stack-protector -no-pie -o stack0_v1_safe_code stack0_v1_safe_code
 
 **Compilation:**
 ```bash
-gcc -m32 -fstack-protector-all -no-pie -o stack0_v2_canary stack0_v2_canary.c
+gcc -m32 -fstack-protector-all -no-pie -o lab2_v2_canary lab2_v2_canary.c
 ```
+
+---
 
 ### Version 3: All Defenses Combined
 
-**File:** `stack0_v3_all_defenses.c`
+**File:** `lab2_v3_all_defenses.c`
 
-**Defense:** Safe code + Stack canary + Fortification
+**Defense:** Safe code + Stack canary + Fortification + PIE
 
 **How it works:**
 - Multiple layers of defense
@@ -66,14 +71,17 @@ gcc -m32 -fstack-protector-all -no-pie -o stack0_v2_canary stack0_v2_canary.c
 - Safe functions (code)
 - Stack canary (compiler)
 - Fortified functions (compiler)
+- Position-independent executable (compiler)
 
 **Result:** Input rejected at first layer
 
 **Compilation:**
 ```bash
-gcc -m32 -fstack-protector-all -D_FORTIFY_SOURCE=2 -no-pie \
-    -o stack0_v3_all_defenses stack0_v3_all_defenses.c
+gcc -m32 -fstack-protector-all -D_FORTIFY_SOURCE=2 -pie \
+    -o lab2_v3_all_defenses lab2_v3_all_defenses.c
 ```
+
+---
 
 ## How to Compile
 
@@ -98,14 +106,30 @@ This will:
 
 ## Expected Results
 
-- **Original:** "you have changed the 'modified' variable" (vulnerable!)
+- **Original:** "picoCTF{...}" flag displayed (vulnerable!)
 - **v1:** "Input too long!" (rejected)
 - **v2:** "stack smashing detected" (canary caught it)
 - **v3:** "Input too long!" (rejected at first layer)
+
+## Attack Payload
+
+The original exploit uses:
+```python
+payload = b"A" * 44 + p32(win_address)
+# 44 bytes to fill buffer + saved EBP
+# Then overwrite return address with win() address
+```
 
 ## Learning Outcomes
 
 1. Defense in depth - multiple independent layers
 2. Code-level vs compiler-level defenses
-3. Prevention vs detection
+3. Prevention vs detection mechanisms
 4. Real-world secure programming practices
+5. Understanding modern security protections (PIE/ASLR)
+
+## References
+
+- Original challenge: picoCTF
+- Tutorial: `../../tutorial/LAB2_PICOCTF_TUTORIAL.md`
+- Exploit: `../../exploits/lab2-picoctf/exploit.py`

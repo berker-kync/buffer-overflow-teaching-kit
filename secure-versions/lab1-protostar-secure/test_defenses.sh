@@ -7,19 +7,19 @@ echo
 PAYLOAD=$(python3 -c "import sys; sys.stdout.buffer.write(b'A' * 64 + b'BCDE')")
 
 echo "[1] Original vulnerable:"
-echo "$PAYLOAD" | ../../vulnerable-programs/protostar-stack0/stack0
+echo "$PAYLOAD" | ../../vulnerable-programs/lab1-protostar/stack0
 echo
 
 echo "[2] Version 1 - Safe Code:"
-echo "$PAYLOAD" | ./stack0_v1_safe_code
+echo "$PAYLOAD" | ./lab1_v1_safe_code
 echo
 
 echo "[3] Version 2 - Stack Canary:"
-echo "$PAYLOAD" | ./stack0_v2_canary 2>&1
+echo "$PAYLOAD" | ./lab1_v2_canary 2>&1
 echo
 
 echo "[4] Version 3 - All Defenses:"
-echo "$PAYLOAD" | ./stack0_v3_all_defenses
+echo "$PAYLOAD" | ./lab1_v3_all_defenses
 echo
 
 echo "========================================"

@@ -6,7 +6,7 @@ This directory contains three secure versions of the SEED Labs buffer overflow p
 
 ## Original Vulnerability
 
-Location: `../../vulnerable-programs/seedlabs-stack/stack.c`
+Location: `../../vulnerable-programs/lab3-seedlabs/stack.c`
 
 The vulnerable program:
 - Uses `strcpy()` with no bounds checking
@@ -19,7 +19,7 @@ The vulnerable program:
 
 ### Version 1: Safe Code Practices
 
-**File:** `stack_v1_safe_code.c`
+**File:** `lab3_v1_safe_code.c`
 
 **Defense:** Input validation + safe functions
 
@@ -32,12 +32,12 @@ The vulnerable program:
 
 **Compilation:**
 ```bash
-gcc -m32 -fno-stack-protector -z execstack -no-pie -o stack_v1_safe_code stack_v1_safe_code.c
+gcc -m32 -fno-stack-protector -z execstack -no-pie -o lab3_v1_safe_code lab3_v1_safe_code.c
 ```
 
 ### Version 2: Compiler and OS Protection
 
-**File:** `stack_v2_canary_nx.c`
+**File:** `lab3_v2_canary_nx.c`
 
 **Defense:** Stack canary + Non-executable stack
 
@@ -50,12 +50,12 @@ gcc -m32 -fno-stack-protector -z execstack -no-pie -o stack_v1_safe_code stack_v
 
 **Compilation:**
 ```bash
-gcc -m32 -fstack-protector-all -z noexecstack -no-pie -o stack_v2_canary_nx stack_v2_canary_nx.c
+gcc -m32 -fstack-protector-all -z noexecstack -no-pie -o lab3_v2_canary_nx lab3_v2_canary_nx.c
 ```
 
 ### Version 3: All Defenses Combined
 
-**File:** `stack_v3_all_defenses.c`
+**File:** `lab3_v3_all_defenses.c`
 
 **Defense:** Safe code + Stack canary + NX + Fortification
 
@@ -72,7 +72,7 @@ gcc -m32 -fstack-protector-all -z noexecstack -no-pie -o stack_v2_canary_nx stac
 **Compilation:**
 ```bash
 gcc -m32 -fstack-protector-all -D_FORTIFY_SOURCE=2 -z noexecstack -no-pie \
-    -o stack_v3_all_defenses stack_v3_all_defenses.c
+    -o lab3_v3_all_defenses lab3_v3_all_defenses.c
 ```
 
 ## How to Compile

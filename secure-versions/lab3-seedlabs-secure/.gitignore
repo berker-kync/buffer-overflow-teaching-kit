@@ -1,9 +1,14 @@
 # Compiled binaries
+lab3_v1_safe_code
+lab3_v2_canary_nx
+lab3_v3_all_defenses
+
+# Old binaries
 stack_v1_safe_code
 stack_v2_canary_nx
 stack_v3_all_defenses
 
-# Exploit files
+# Exploit output
 badfile
 
 # Editor backups

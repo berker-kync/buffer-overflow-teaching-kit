@@ -22,15 +22,15 @@ echo "   The exploit works - badfile created successfully"
 echo
 
 echo "[2] Version 1 - Safe Code:"
-./stack_v1_safe_code 2>&1
+./lab3_v1_safe_code 2>&1
 echo
 
 echo "[3] Version 2 - Canary + NX:"
-./stack_v2_canary_nx 2>&1
+./lab3_v2_canary_nx 2>&1
 echo
 
 echo "[4] Version 3 - All Defenses:"
-./stack_v3_all_defenses 2>&1
+./lab3_v3_all_defenses 2>&1
 echo
 
 echo "========================================"
